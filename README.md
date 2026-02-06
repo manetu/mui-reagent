@@ -1,3 +1,4 @@
+[![Clojars Project](https://img.shields.io/clojars/v/io.github.manetu/mui-reagent.svg)](https://clojars.org/io.github.manetu/mui-reagent)
 # mui-reagent
 
 Reagent component wrappers for [Material UI (MUI)](https://mui.com/) v7.
