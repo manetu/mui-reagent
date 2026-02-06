@@ -38,8 +38,36 @@ jobs:
       - name: Run tests
         run: lein test
 
+      - name: Install GPG secret key
+        run: |
+          echo -e "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          gpg --list-secret-keys --keyid-format LONG
+
+      - name: Configure GPG for CI
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          # Enable non-interactive passphrase handling
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          echo "allow-preset-passphrase" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent
+          gpg-connect-agent reloadagent /bye
+
+          # Get keygrip and preset passphrase in agent
+          KEYGRIP=$(gpg --batch --with-keygrip --with-colons --list-secret-keys | awk -F: '/^grp/ {print $10; exit}')
+          /usr/lib/gnupg/gpg-preset-passphrase --preset "$KEYGRIP" <<< "$GPG_PASSPHRASE"
+
+          # Verify signing works
+          echo "test" | gpg --batch --clearsign > /dev/null 2>&1
+
       - name: Deploy to Clojars
         env:
-          CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
+          CLOJARS_USERNAME: ${{ vars.CLOJARS_USERNAME }}
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
-        run: lein deploy clojars
+          GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
+        run: |
+          git config --global user.name "Manetu CI"
+          git config --global user.email "administrators@manetu.com"
+          git config --global user.signingkey "$GPG_KEY_ID"
+
+          lein deploy clojars
